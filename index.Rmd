@@ -1,0 +1,288 @@
+---
+title: "A3 - Data Visualization"
+author: "Anirudh Suresh"
+date: '2022-05-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(stringr)
+library(dplyr)
+library(geojsonio)
+library(broom)
+library(mapproj)
+library(maptools)
+spdf <- geojson_read("gz_2010_us_050_00_5m.json", what="sp")
+spdf_fortified <- tidy(spdf, region="NAME")
+data <- read.csv("incarceration_trends.csv")
+data$county_first_name <- word(data$county_name, 1)
+
+race_jail_pop <- data %>% 
+            select(year, black_prison_pop, total_prison_pop, white_prison_pop, latinx_prison_pop, native_prison_pop, other_race_prison_pop) %>%
+            na.omit() %>%
+            group_by(year) %>%
+            summarize(tp = sum(total_prison_pop), bp = sum(black_prison_pop), wp = sum(white_prison_pop), lp = sum(latinx_prison_pop), np = sum(native_prison_pop), op = sum(other_race_prison_pop))
+
+prison_pop_percentage <- data %>% 
+            select(year, black_pop_15to64, white_pop_15to64, black_prison_pop, white_prison_pop) %>%
+            na.omit() %>%
+            group_by(year) %>%
+            summarize(black_pop = sum(black_pop_15to64), white_pop = sum(white_pop_15to64), black_prison_pop = sum(black_prison_pop), white_prison_pop = sum(white_prison_pop)) %>%
+            mutate(b_ratio = black_prison_pop / black_pop, w_ratio = white_prison_pop / white_pop)
+
+prison_adm <- data %>%
+            select(year, aapi_prison_adm, aapi_prison_adm_rate, black_prison_adm, black_prison_adm_rate, white_prison_adm, white_prison_adm_rate, latinx_prison_adm, latinx_prison_adm_rate, native_prison_adm, native_prison_adm_rate) %>% 
+              na.omit() %>% 
+              group_by(year) %>%
+              summarise(apa = sum(aapi_prison_adm), apar = sum(aapi_prison_adm_rate), bpa = sum(black_prison_adm), bpar = sum(black_prison_adm_rate), wpa = sum(white_prison_adm), wpar = sum(white_prison_adm_rate), lpa = sum(latinx_prison_adm), lpar=sum(latinx_prison_adm_rate), npa = sum(native_prison_adm), npar=sum(native_prison_adm_rate))
+
+
+jail_adm <- data  %>%
+  select(year, black_jail_pop, white_jail_pop) %>% 
+  na.omit() %>% 
+  group_by(year) %>% 
+  summarize(bjr = sum(black_jail_pop), wjr = sum(white_jail_pop))
+
+
+d2 <- data %>% 
+        select(year, black_pop_15to64, white_pop_15to64, total_prison_pop, black_prison_pop, white_prison_pop, county_first_name, total_pop_15to64) %>%
+        na.omit() %>%
+        group_by(across(all_of(c("year", "county_first_name")))) %>%
+        summarize(black_pop = sum(black_pop_15to64), white_pop = sum(white_pop_15to64), black_prison_pop = sum(black_prison_pop), white_prison_pop = sum(white_prison_pop), total_prison_pop = sum(total_prison_pop), total_pop = sum(total_pop_15to64)) %>%
+        mutate(b_ratio = black_prison_pop / black_pop, w_ratio = white_prison_pop / white_pop)
+
+spdf_fortified <- spdf_fortified %>%
+  left_join(. , d2, by=c("id"="county_first_name"))
+```
+
+
+```{r, echo=FALSE}
+c <- colnames(data)
+
+# interesting pieces of data
+max_b_ratio <- (prison_pop_percentage %>% 
+          filter(b_ratio == max(b_ratio)))[[1,6]]
+
+max_b_ratio_yr <- (prison_pop_percentage %>% 
+          filter(b_ratio == max(b_ratio)))[[1,1]]
+
+min_b_ratio <- (prison_pop_percentage %>% 
+          filter(b_ratio == min(b_ratio)))[[1,6]]
+
+min_b_ratio_yr <- (prison_pop_percentage %>% 
+          filter(b_ratio == min(b_ratio)))[[1,1]]
+
+latest_b_ratio <- (prison_pop_percentage %>%
+          filter(year == max(year)))[[1,6]]
+
+avg_b_ratio <- mean(prison_pop_percentage$b_ratio)
+avg_w_ratio <- mean(prison_pop_percentage$w_ratio)
+
+max_w_ratio <- (prison_pop_percentage %>% 
+          filter(w_ratio == max(w_ratio)))[[1,7]]
+
+max_w_ratio_yr <- (prison_pop_percentage %>% 
+          filter(w_ratio == max(w_ratio)))[[1,1]]
+
+min_w_ratio_yr <- (prison_pop_percentage %>% 
+          filter(w_ratio == min(w_ratio)))[[1,1]]
+
+latest_w_ratio <- (prison_pop_percentage %>%
+          filter(year == max(year)))[[1,7]]
+
+latest_b_pop <- (prison_pop_percentage %>%
+          filter(year == max(year)))[[1,4]]
+
+latest_w_pop <- (prison_pop_percentage %>%
+          filter(year == max(year)))[[1,5]]
+
+min_a_padm <- (prison_adm %>% 
+                 filter(apa == min(apa)))[[1,2]]
+
+min_b_padm <- (prison_adm %>% 
+                 filter(bpa == min(bpa)))[[1,4]]
+
+min_w_padm <- (prison_adm %>% 
+                 filter(wpa == min(wpa)))[[1,6]]
+
+min_l_padm <- (prison_adm %>% 
+                 filter(lpa == min(lpa)))[[1,8]]
+
+min_n_padm <- (prison_adm %>% 
+                 filter(npa == min(npa)))[[1,10]]
+
+
+min_a_padmr <- (prison_adm %>% 
+                 filter(apar == min(apar)))[[1,3]]
+
+min_b_padmr <- (prison_adm %>% 
+                 filter(bpar == min(bpar)))[[1,5]]
+
+min_w_padmr <- (prison_adm %>% 
+                 filter(wpar == min(wpar)))[[1,7]]
+
+min_l_padmr <- (prison_adm %>% 
+                 filter(lpar == min(lpar)))[[1,9]]
+
+min_n_padmr <- (prison_adm %>% 
+                 filter(npar == min(npar)))[[1,11]]
+```
+
+# Introduction
+#### and some summary information
+
+Racial incarceration has been a major part of the United States history, even to this very day. The problem is more deep seated than just verbal or physical abuse -- it has taken a hold of the justice system as well. Namely, the jailing/prison system. The racism towards people of color, especially when held by people in authority, leads to certain racial groups to be apprehended disproportionately. All of this can be easily identified by simply looking at data regarding prison populations and admission rates (specifically for comparing between black and white people simply due to there being more data about these races than the others). The reason for looking at these particular values is that they speak volumes about the inequality in who gets admitted to prison simply due to the fact that certain races get thrown in much more than others.
+
+We can especially see it when we calculate some basic pieces of information. For example the _lowest_ ratio of black people in prison vs the total black population has ever been was `r min_b_ratio`. In other words, at its lowest, `r min_b_ratio*100`% of all black people were in prison.
+
+Comparatively, if we look at the _highest_ ratio of white people in prison vs the total white population was `r max_w_ratio`. Even at its highest, there is a lower proportion of white people in prison than there are black people. This might seem like it is skewed simply due to the fact that the population sizes of different races are different. However, there are currently `r latest_b_pop` black people in prison whereas there are only `r latest_w_pop` white people in prison. This is surprising, especially considering that there are significantly more white people in the United States.
+
+Of course, these two races are not the only races within the US. If we look at the _minimum_ prison admission amongst all the races, we get the following:
+
+* `r min_a_padm` Asian American/Pacific Islander
+* `r min_b_padm` Black
+* `r min_w_padm` White
+* `r min_l_padm` Latinx
+* `r min_n_padm` Native
+
+Similarly, if we look at the minimum rates of prison admission:
+
+* `r min_a_padmr` Asian American/Pacific Islander
+* `r min_b_padmr` Black
+* `r min_w_padmr` White
+* `r min_l_padmr` Latinx
+* `r min_n_padmr` Native
+
+Even at the minimum, black people are admitted into prison much more than white people are -- by a significant amount.
+
+On overage, the ratio of black people in prison vs black people not in prison is `r avg_b_ratio`. For white people this number falls down to only `r avg_w_ratio`. This suggests that there are significantly more black people in prison. This is especially shown later in this report as we see populations as a whole.
+
+To delve further into this, let's plot some data.
+
+# Charting
+
+### Plots over time
+
+First, let's take a look at the prison populations of various racial groups:
+
+```{r, echo=F}
+# trends over time of jail population
+ggplot(race_jail_pop, aes(x=year)) +
+  geom_line(aes(y=tp, color = "Total Prison Population")) +
+  geom_line(aes(y=wp, color = "White Prison Population")) +
+  geom_line(aes(y=bp, color = "Black Prison Population")) +
+  geom_line(aes(y=lp, color = "Latinx Prison Population")) +
+  geom_line(aes(y=np, color = "Native Prison Population")) +
+  geom_line(aes(y=op, color = "Other Races Prison Population")) +
+  scale_colour_manual(name="Prison Populations",
+                      values = c("Total Prison Population"="black", "White Prison Population"="red", "Black Prison Population"="blue", "Latinx Prison Population" = "purple", "Native Prison Population" = "pink", "Other Races Prison Population" = "brown")) +
+  xlab("Year") + ylab("Population Count") + ggtitle("Prison populations of Various Groups")
+```
+
+We see that at every single point in time, the black prison population has remained consistently higher than that of white people consistently.
+
+Take that into consideration with the total population of black and white people over time:
+
+```{r, echo=F}
+
+ggplot(prison_pop_percentage, aes(x=year)) +
+  geom_line(aes(y=black_pop, color = "Black People")) +
+  geom_line(aes(y=white_pop,color = "White Pople")) +
+  scale_colour_manual(name="Race",
+                      values = c("Black People" = "orange", "White People" = "blue")) +
+  xlab("Year") + ylab("Population Count") + ggtitle("Population of White and Black People in the US")
+
+
+```
+
+The black population has remained consistently (much) lower than the white population. Even with a significantly lower population of black people in the United States, the prison population of black people has been consistently higher. This doesn't make much sense. Proportionally, since there are so many _more_ white people, there should similarly be many white people in prison. But this is not the case -- which only indicates that black people are being disproportionately targeted/placed in prison.
+
+
+### Comparison
+
+Speaking of proportions, the proportion of people in prison vs not in prison can also reveal a great deal about inequality. To help make it clear, we have chosen the two races with the most data points.
+
+```{r, echo=F}
+ggplot(prison_pop_percentage, aes(x=year)) +
+  geom_line(aes(y=b_ratio, color = "Black")) +
+  geom_line(aes(y=w_ratio, color="White")) +
+  scale_color_manual(name="Race", values=c("Black"="blue", "White"="Orange")) +
+  xlab("Year") + ylab("Ratio") + ggtitle("Ratio of Race in Prison vs Not in Prison")
+```
+
+We see from this that even at the highest, white people do not nearly have anywhere near the same ratio of people in prison as black people do. At first it might seem like it can be attributed to the fact that the populations of the two races are completely different. However, this does not exactly make sense when taking into account that even with larger populations, white people will have less people in prison.
+
+To make this clearer, lets look at more data:
+
+```{r, echo=F}
+ggplot(jail_adm, aes(x=year)) +
+  geom_line(aes(y=bjr, color = "Black")) +
+  geom_line(aes(y=wjr, color="White")) +
+  scale_color_manual(name="Race", values=c("Black"="blue", "White"="Orange")) +
+  xlab("Year") + ylab("Admission Rate") + ggtitle("Admission Rate to Jail by Race")
+
+ggplot(prison_adm, aes(x=year)) +
+  geom_line(aes(y=bpar, color = "Black")) +
+  geom_line(aes(y=wpar, color="White")) +
+  scale_color_manual(name="Race", values=c("Black"="blue", "White"="Orange")) +
+  xlab("Year") + ylab("Admission Rate") + ggtitle("Admission Rate to Prison by Race")
+```
+
+
+Over the years the admission to jail for two races have been fairly similar up until 2000. Around this time, the number of white people admitted to jail has been higher. However, even with this heightened intake of white people into jail, this does not convert to the data we saw earlier. There are clearly fewer black people being arrested. However, a much larger portion of the black people arrested have been found guilty and taken into prison. This data suggests that white people are acquitted of their charges much more often than black people are.
+
+
+### Mapping
+
+We can continue seeing trends with racial incarceration when looking at various parts of the contiguous states of the country.
+
+First, let's look at the same ratios that we were talking about earlier:
+
+```{r, echo=F}
+ggplot() +
+  geom_polygon(data = spdf_fortified, aes( x = long, y = lat, group = group, fill=(white_prison_pop/total_prison_pop))) +
+  theme_void() +
+  coord_map() +
+  scale_x_continuous(limits = c(-125, -60)) +
+  scale_y_continuous(limits = c(25, 50)) +
+  ggtitle("Ratio between White people in Prison and All People in Prison")
+
+
+ggplot() +
+  geom_polygon(data = spdf_fortified, aes( x = long, y = lat, group = group, fill=(black_prison_pop/total_prison_pop))) +
+  theme_void() +
+  coord_map() +
+  scale_x_continuous(limits = c(-125, -60)) +
+  scale_y_continuous(limits = c(25, 50)) +
+  ggtitle("Ratio between Black people in Prison and All People in Prison")
+```
+
+
+As expected, we see that the map depicting the ratio between black people and all the people in prison to be higher. From the lightness, we see that much of this is in fact occurring in the southwest, where there also appears to be a larger concentration of black people: 
+
+```{r, echo=F}
+ggplot() +
+  geom_polygon(data = spdf_fortified, aes( x = long, y = lat, group = group, fill=(black_pop/total_pop))) +
+  theme_void() +
+  coord_map() +
+  scale_x_continuous(limits = c(-125, -60)) +
+  scale_y_continuous(limits = c(25, 50)) +
+  ggtitle("Ratio between Black people and All People")
+
+
+ggplot() +
+  geom_polygon(data = spdf_fortified, aes( x = long, y = lat, group = group, fill=(white_pop/total_pop))) +
+  theme_void() +
+  coord_map() +
+  scale_x_continuous(limits = c(-125, -60)) +
+  scale_y_continuous(limits = c(25, 50)) +
+  ggtitle("Ratio between Black people and All People")
+```
+
+Even in places where there are not that many black people, there seems to be a curiously high proportion of black people within prisons in the area, further suggesting that racial incarceration is very real. For example, look at all the lighter pieces of data depicting ratios for black poeple in any location that is not the southwest. These numbers should not be present in these areas simply due to the racial make up of the populations in those areas.
+
+# Conclusion
+
+In short, all these graphs and data points depict how there are so many different things that we can look at in order to prove that there is a disproportionate number of black people being put into prisons -- even when it does not make sense that they should be there. Consider the fact that in counties where there are not that many black people sometimes have black people as the highest race being jailed within America. One thing to note is that even though this report mainly looked at the dynamics between black and white people, it must be noted that that does not mean that other races do not face racial incarceration. Rather, it is purely due to the fact that the two races being analyzed had the most data points associated with them.
