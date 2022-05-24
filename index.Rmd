@@ -247,7 +247,8 @@ ggplot() +
   coord_map() +
   scale_x_continuous(limits = c(-125, -60)) +
   scale_y_continuous(limits = c(25, 50)) +
-  ggtitle("Ratio between White people in Prison and All People in Prison")
+  ggtitle("Ratio between White people in Prison and All People in Prison") +
+  scale_fill_continuous(name="Ratio")
 
 
 ggplot() +
@@ -256,11 +257,12 @@ ggplot() +
   coord_map() +
   scale_x_continuous(limits = c(-125, -60)) +
   scale_y_continuous(limits = c(25, 50)) +
-  ggtitle("Ratio between Black people in Prison and All People in Prison")
+  ggtitle("Ratio between Black people in Prison and All People in Prison") +
+  scale_fill_continuous(name="Ratio")
 ```
 
 
-As expected, we see that the map depicting the ratio between black people and all the people in prison to be higher. From the lightness, we see that much of this is in fact occurring in the southwest, where there also appears to be a larger concentration of black people: 
+As expected, we see that the map depicting the ratio between black people and all the people in prison to be higher. From the lightness, we see that much of this is in fact occurring in the southwest. Also by happenstance, this happens to be the one of the places where there are the fewest white people in prison. To further clear up confusion, let us plot what the populations are like in all the areas.
 
 ```{r, echo=F}
 ggplot() +
@@ -269,7 +271,8 @@ ggplot() +
   coord_map() +
   scale_x_continuous(limits = c(-125, -60)) +
   scale_y_continuous(limits = c(25, 50)) +
-  ggtitle("Ratio between Black people and All People")
+  ggtitle("Ratio between Black people and All People") +
+  scale_fill_continuous(name="Ratio")
 
 
 ggplot() +
@@ -278,10 +281,14 @@ ggplot() +
   coord_map() +
   scale_x_continuous(limits = c(-125, -60)) +
   scale_y_continuous(limits = c(25, 50)) +
-  ggtitle("Ratio between Black people and All People")
+  ggtitle("Ratio between White people and All People") +
+  scale_fill_continuous(name="Ratio")
 ```
 
+Firstly, we see that there still are a decent number of white people in the southwest. In fact, there are quite a lot of white people in the southwest. One particular _pattern_ that we are seeing is that there is in fact racial incarceration present within the United States. Furthermore, this incarcerations seems to be largely present within the southwest. This indicates that this particular region of the United States is a hotbed for such incarcerations.
+
 Even in places where there are not that many black people, there seems to be a curiously high proportion of black people within prisons in the area, further suggesting that racial incarceration is very real. For example, look at all the lighter pieces of data depicting ratios for black poeple in any location that is not the southwest. These numbers should not be present in these areas simply due to the racial make up of the populations in those areas.
+
 
 # Conclusion
 
